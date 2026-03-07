@@ -1,8 +1,8 @@
 use std::fs;
 use serde::Serialize;
 use tauri::menu::{Menu, MenuItem, Submenu};
-use tauri::Emitter;
 use std::path::Path;
+use tauri::{Manager, Emitter, WebviewWindowBuilder, WebviewUrl};
 
 #[derive(Serialize)]
 struct FileInfo {
@@ -83,7 +83,8 @@ pub fn run() {
         .setup(|app| {
             let create_dir_i = MenuItem::with_id(app, "create-dir", "Create directory", true, Some("CmdOrCtrl+D"))?;
             let create_file_i = MenuItem::with_id(app, "create-file", "Create file", true, Some("CmdOrCtrl+F"))?;
-            let file_menu = Submenu::with_items(app, "File", true, &[&create_dir_i, &create_file_i])?;
+            let new_window_i = MenuItem::with_id(app, "new-window", "New window", true, Some("CmdOrCtrl+N"))?;
+            let file_menu = Submenu::with_items(app, "File", true, &[&create_dir_i, &create_file_i, &new_window_i])?;
             let delete_file_i = MenuItem::with_id(app, "delete", "Delete", true, Some("Delete"))?;
             let edit_menu = Submenu::with_items(app, "Edit", true, &[&delete_file_i])?;
             let menu = Menu::with_items(app, &[&file_menu, &edit_menu])?;
@@ -92,22 +93,32 @@ pub fn run() {
         })
         .on_menu_event(|app_handle, event| {
             if event.id() == "create-dir" {
-                let handle = app_handle.clone();
-                if let Err(e) = handle.emit("create-dir", "") {
-                    eprintln!("Error creating dir: {}", e);
-                }
+                let _ = app_handle.emit("create-dir", "");
             }
             if event.id() == "create-file" {
-                let handle = app_handle.clone();
-                if let Err(e) = handle.emit("create-file", "") {
-                    eprintln!("Error creating file: {}", e);
+                let _ = app_handle.emit("create-file", "");
+            }
+            if event.id() == "new-window" {
+                if let Some(window) = app_handle.get_webview_window("main") {
+                    let current_pos = window.outer_position().unwrap_or_default();
+                    let current_size = window.inner_size().unwrap_or_default();
+                    let label = format!("clone_{}", std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap().as_millis());
+
+                    let _ = WebviewWindowBuilder::new(
+                        app_handle,
+                        label,
+                        WebviewUrl::App("index.html".into())
+                    )
+                    .title("File manager")
+                    .position((current_pos.x + 20) as f64, (current_pos.y + 20) as f64)
+                    .inner_size(current_size.width as f64, current_size.height as f64)
+                    .build();
                 }
             }
             if event.id() == "delete" {
-                let handle = app_handle.clone();
-                if let Err(e) = handle.emit("delete", "") {
-                    eprintln!("Error deleting file: {}", e);
-                }
+                let _ = app_handle.emit("delete", "");
             }
         })
         .invoke_handler(tauri::generate_handler![get_files, get_parent_path, get_home_dir, open_file, create_dir, create_file, delete]) 
