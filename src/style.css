@@ -66,3 +66,12 @@ li {
 li:hover {
     background-color: #555;
 }
+
+li.selected {
+    background-color: #0078d4;
+    color: white;
+}
+
+li.selected:hover {
+    background-color: #005a9e;
+}

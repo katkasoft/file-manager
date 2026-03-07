@@ -2,6 +2,7 @@ use std::fs;
 use serde::Serialize;
 use tauri::menu::{Menu, MenuItem, Submenu};
 use tauri::Emitter;
+use std::path::Path;
 
 #[derive(Serialize)]
 struct FileInfo {
@@ -49,6 +50,20 @@ fn create_file(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn delete(path: String) -> Result<(), String> {
+    let p = Path::new(&path);
+    if !p.exists() {
+        return Err("Path does not exist".to_string());
+    }
+    if p.is_dir() {
+        fs::remove_dir_all(p).map_err(|e| e.to_string())?;
+    } else {
+        fs::remove_file(p).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 fn get_files(path: String) -> Result<Vec<FileInfo>, String> {
     let entries = fs::read_dir(&path).map_err(|e| e.to_string())?;
     let mut files = Vec::new();
@@ -69,7 +84,9 @@ pub fn run() {
             let create_dir_i = MenuItem::with_id(app, "create-dir", "Create directory", true, Some("CmdOrCtrl+D"))?;
             let create_file_i = MenuItem::with_id(app, "create-file", "Create file", true, Some("CmdOrCtrl+F"))?;
             let file_menu = Submenu::with_items(app, "File", true, &[&create_dir_i, &create_file_i])?;
-            let menu = Menu::with_items(app, &[&file_menu])?;
+            let delete_file_i = MenuItem::with_id(app, "delete", "Delete", true, Some("Delete"))?;
+            let edit_menu = Submenu::with_items(app, "Edit", true, &[&delete_file_i])?;
+            let menu = Menu::with_items(app, &[&file_menu, &edit_menu])?;
             app.set_menu(menu)?;
             Ok(())
         })
@@ -86,8 +103,14 @@ pub fn run() {
                     eprintln!("Error creating file: {}", e);
                 }
             }
+            if event.id() == "delete" {
+                let handle = app_handle.clone();
+                if let Err(e) = handle.emit("delete", "") {
+                    eprintln!("Error deleting file: {}", e);
+                }
+            }
         })
-        .invoke_handler(tauri::generate_handler![get_files, get_parent_path, get_home_dir, open_file, create_dir, create_file]) 
+        .invoke_handler(tauri::generate_handler![get_files, get_parent_path, get_home_dir, open_file, create_dir, create_file, delete]) 
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -3,6 +3,7 @@ const { listen } = window.__TAURI__.event;
 const fileList = document.getElementById('file-list');
 const pathInput = document.getElementById('path');
 let globalPath = "";
+let selectedPath = "";
 
 document.getElementById('back').onclick = async () => {
     if (globalPath === "/") return;
@@ -28,7 +29,12 @@ async function loadFiles(path) {
             } else {
                 li.textContent = "📄 " + file.display_path;
             }
-            li.onclick = async () => {
+            li.onclick = () => {
+                document.querySelectorAll('li').forEach(el => el.classList.remove('selected'));
+                li.classList.add('selected');
+                selectedPath = file.full_path; 
+            };
+            li.ondblclick = async () => {
                 if (file.entry_type == "dir") {
                     loadFiles(file.full_path);
                 } else {
@@ -76,6 +82,15 @@ async function init() {
         loadFiles(globalPath);
     } catch (e) {
         alert("Error creating file: " + e);
+    }
+  });
+  await listen('delete', async (event) => {
+    if (!selectedPath) return;
+    try {
+        await invoke('delete', { path: selectedPath });
+        loadFiles(globalPath);
+    } catch (e) {
+        alert("Error deleting file: " + e);
     }
   });
 }
