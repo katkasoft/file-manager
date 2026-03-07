@@ -1,4 +1,5 @@
 const { invoke } = window.__TAURI__.core;
+const { listen } = window.__TAURI__.event;
 const fileList = document.getElementById('file-list');
 const pathInput = document.getElementById('path');
 let globalPath = "";
@@ -59,6 +60,24 @@ async function init() {
     alert(e);
     loadFiles("/");
   }
+  await listen('create-dir', async (event) => {
+    let dirPath = globalPath + "/" + prompt("Enter directory name:");
+    try {
+        await invoke('create_dir', { path: dirPath });
+        loadFiles(globalPath);
+    } catch (e) {
+        alert("Error creating directory: " + e);
+    }
+  });
+  await listen('create-file', async (event) => {
+    let filePath = globalPath + "/" + prompt("Enter file name:");
+    try {
+        await invoke('create_file', { path: filePath });
+        loadFiles(globalPath);
+    } catch (e) {
+        alert("Error creating file: " + e);
+    }
+  });
 }
 
 window.addEventListener('DOMContentLoaded', init);
