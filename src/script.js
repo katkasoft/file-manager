@@ -4,6 +4,7 @@ const fileList = document.getElementById('file-list');
 const pathInput = document.getElementById('path');
 let globalPath = "";
 let selectedPath = "";
+let showHidden = false;
 
 async function openFile(path) {
     try {
@@ -30,7 +31,7 @@ async function loadFiles(path) {
         const files = await invoke('get_files', { path: path });
         fileList.innerHTML = '';
         for (const file of files) {
-            if (file.display_path.startsWith('.')) continue;
+            if (file.display_path.startsWith('.') && !showHidden) continue;
             const li = document.createElement('li');
             if (file.entry_type == "dir") {
                 li.textContent = "📁 " + file.display_path;
@@ -122,6 +123,10 @@ const urlParams = new URLSearchParams(window.location.search);
     }
   });
   await listen('refresh', async (event) => {
+    loadFiles(globalPath);
+  });
+  await listen('toggle-hidden', async (event) => {
+    showHidden = !showHidden;
     loadFiles(globalPath);
   });
 }
