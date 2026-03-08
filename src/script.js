@@ -121,6 +121,9 @@ const urlParams = new URLSearchParams(window.location.search);
         alert("Error deleting file: " + e);
     }
   });
+  await listen('refresh', async (event) => {
+    loadFiles(globalPath);
+  });
 }
 
 window.addEventListener('DOMContentLoaded', init);

@@ -118,7 +118,9 @@ pub fn run() {
             let file_menu = Submenu::with_items(app, "File", true, &[&create_dir_i, &create_file_i, &open_file_i, &view_file_i, &new_window_i])?;
             let delete_file_i = MenuItem::with_id(app, "delete", "Delete", true, Some("Delete"))?;
             let edit_menu = Submenu::with_items(app, "Edit", true, &[&delete_file_i])?;
-            let menu = Menu::with_items(app, &[&file_menu, &edit_menu])?;
+            let refresh_i = MenuItem::with_id(app, "refresh", "Refresh", true, Some("CmdOrCtrl+R"))?;
+            let view_menu = Submenu::with_items(app, "View", true, &[&refresh_i])?;
+            let menu = Menu::with_items(app, &[&file_menu, &edit_menu, &view_menu])?;
             app.set_menu(menu)?;
             Ok(())
         })
@@ -156,6 +158,9 @@ pub fn run() {
             }
             if event.id() == "delete" {
                 let _ = app_handle.emit("delete", "");
+            }
+            if event.id() == "refresh" {
+                let _ = app_handle.emit("refresh", "");
             }
         })
         .invoke_handler(tauri::generate_handler![get_files, get_parent_path, get_home_dir, open_file, create_dir, create_file, delete, view_file, read_text_file]) 
