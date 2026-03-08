@@ -59,6 +59,18 @@ pathInput.addEventListener('keydown', (event) => {
 });
 
 async function init() {
+const urlParams = new URLSearchParams(window.location.search);
+  const fileToView = urlParams.get('view');
+  if (fileToView) {
+    document.body.innerHTML = `<pre id="content">Loading...</pre>`;
+    try {
+        const content = await invoke('read_text_file', { path: fileToView });
+        document.getElementById('content').textContent = content;
+    } catch (e) {
+        document.getElementById('content').textContent = "Error: " + e;
+    }
+    return;
+  }
   try {
     const home = await invoke('get_home_dir');
     loadFiles(home);
@@ -82,6 +94,14 @@ async function init() {
         loadFiles(globalPath);
     } catch (e) {
         alert("Error creating file: " + e);
+    }
+  });
+  await listen('view-file', async (event) => {
+    if (!selectedPath) return;
+    try {
+        await invoke('view_file', { path: selectedPath });
+    } catch (e) {
+        alert("Error viewing file: " + e);
     }
   });
   await listen('delete', async (event) => {

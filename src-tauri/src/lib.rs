@@ -1,8 +1,9 @@
 use std::fs;
 use serde::Serialize;
-use tauri::menu::{Menu, MenuItem, Submenu};
+use tauri::{menu::{Menu, MenuItem, Submenu}};
 use std::path::Path;
-use tauri::{Manager, Emitter, WebviewWindowBuilder, WebviewUrl};
+use tauri::{Manager, Emitter, WebviewWindowBuilder, WebviewUrl, AppHandle};
+use urlencoding;
 
 #[derive(Serialize)]
 struct FileInfo {
@@ -64,6 +65,34 @@ fn delete(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn view_file(path: String, app: AppHandle) {
+    let p = Path::new(&path);
+    if p.is_file() {
+        if let Some(_window) = app.get_webview_window("main") {
+            let label = format!("view_{}", std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap().as_millis());
+            let encoded_path = urlencoding::encode(&path);
+            let url = format!("index.html?view={}", encoded_path);
+            let empty_menu = Menu::new(&app).unwrap();
+            let _ = WebviewWindowBuilder::new(
+                &app,
+                label,
+                WebviewUrl::App(url.into())
+            )
+            .menu(empty_menu)
+            .title(format!("Viewing: {}", path))
+            .build();
+        }
+    }
+}
+
+#[tauri::command]
+fn read_text_file(path: String) -> Result<String, String> {
+    fs::read_to_string(path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn get_files(path: String) -> Result<Vec<FileInfo>, String> {
     let entries = fs::read_dir(&path).map_err(|e| e.to_string())?;
     let mut files = Vec::new();
@@ -83,8 +112,9 @@ pub fn run() {
         .setup(|app| {
             let create_dir_i = MenuItem::with_id(app, "create-dir", "Create directory", true, Some("CmdOrCtrl+D"))?;
             let create_file_i = MenuItem::with_id(app, "create-file", "Create file", true, Some("CmdOrCtrl+F"))?;
+            let view_file_i = MenuItem::with_id(app, "view-file", "View file", true, Some("CmdOrCtrl+O"))?;
             let new_window_i = MenuItem::with_id(app, "new-window", "New window", true, Some("CmdOrCtrl+N"))?;
-            let file_menu = Submenu::with_items(app, "File", true, &[&create_dir_i, &create_file_i, &new_window_i])?;
+            let file_menu = Submenu::with_items(app, "File", true, &[&create_dir_i, &create_file_i, &view_file_i, &new_window_i])?;
             let delete_file_i = MenuItem::with_id(app, "delete", "Delete", true, Some("Delete"))?;
             let edit_menu = Submenu::with_items(app, "Edit", true, &[&delete_file_i])?;
             let menu = Menu::with_items(app, &[&file_menu, &edit_menu])?;
@@ -97,6 +127,9 @@ pub fn run() {
             }
             if event.id() == "create-file" {
                 let _ = app_handle.emit("create-file", "");
+            }
+            if event.id() == "view-file" {
+                let _ = app_handle.emit("view-file", "");
             }
             if event.id() == "new-window" {
                 if let Some(window) = app_handle.get_webview_window("main") {
@@ -121,7 +154,7 @@ pub fn run() {
                 let _ = app_handle.emit("delete", "");
             }
         })
-        .invoke_handler(tauri::generate_handler![get_files, get_parent_path, get_home_dir, open_file, create_dir, create_file, delete]) 
+        .invoke_handler(tauri::generate_handler![get_files, get_parent_path, get_home_dir, open_file, create_dir, create_file, delete, view_file, read_text_file]) 
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
