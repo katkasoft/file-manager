@@ -14,7 +14,7 @@ async function openFile(path) {
     }
 }
 
-document.getElementById('back').onclick = async () => {
+async function goUp() {
     if (globalPath === "/") return;
     try {
         const parentPath = await invoke('get_parent_path', { path: globalPath });
@@ -22,6 +22,10 @@ document.getElementById('back').onclick = async () => {
     } catch (e) {
         alert("Error going to parent directory: " + e);
     }
+}
+
+document.getElementById('up').onclick = async () => {
+    await goUp();
 }
 
 async function loadFiles(path) {
@@ -128,6 +132,9 @@ const urlParams = new URLSearchParams(window.location.search);
   await listen('toggle-hidden', async (event) => {
     showHidden = !showHidden;
     loadFiles(globalPath);
+  });
+  await listen('go-up', async (event) => {
+    await goUp();
   });
 }
 

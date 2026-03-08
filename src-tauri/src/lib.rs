@@ -121,7 +121,9 @@ pub fn run() {
             let refresh_i = MenuItem::with_id(app, "refresh", "Refresh", true, Some("CmdOrCtrl+R"))?;
             let show_hidden_i = MenuItem::with_id(app, "toggle-hidden", "Show/hide hidden files", true, Some("CmdOrCtrl+H"))?;
             let view_menu = Submenu::with_items(app, "View", true, &[&refresh_i, &show_hidden_i])?;
-            let menu = Menu::with_items(app, &[&file_menu, &edit_menu, &view_menu])?;
+            let go_up_i = MenuItem::with_id(app, "go-up", "Go up", true, Some("CmdOrCtrl+Up"))?;
+            let navigation_menu = Submenu::with_items(app, "Navigation", true, &[&go_up_i])?;
+            let menu = Menu::with_items(app, &[&file_menu, &edit_menu, &view_menu, &navigation_menu])?;
             app.set_menu(menu)?;
             Ok(())
         })
@@ -165,6 +167,9 @@ pub fn run() {
             }
             if event.id() == "toggle-hidden" {
                 let _ = app_handle.emit("toggle-hidden", "");
+            }
+            if event.id() == "go-up" {
+                let _ = app_handle.emit("go-up", "");
             }
         })
         .invoke_handler(tauri::generate_handler![get_files, get_parent_path, get_home_dir, open_file, create_dir, create_file, delete, view_file, read_text_file]) 
