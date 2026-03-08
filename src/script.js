@@ -153,6 +153,14 @@ const urlParams = new URLSearchParams(window.location.search);
         alert("Error viewing file: " + e);
     }
   });
+  await listen('copy', async (event) => {
+    if (!selectedPath) return;
+    try {
+        await invoke('copy', { path: selectedPath });
+    } catch (e) {
+        alert("Error copying file path to clipboard: " + e);
+    }
+  });
   await listen('delete', async (event) => {
     if (!selectedPath) return;
     try {

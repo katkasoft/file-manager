@@ -4,6 +4,7 @@ use tauri::{menu::{Menu, MenuItem, Submenu}};
 use std::path::Path;
 use tauri::{Manager, Emitter, WebviewWindowBuilder, WebviewUrl, AppHandle};
 use urlencoding;
+use std::process::Command;
 
 #[derive(Serialize)]
 struct FileInfo {
@@ -107,6 +108,31 @@ fn get_files(path: String) -> Result<Vec<FileInfo>, String> {
     Ok(files)
 }
 
+#[tauri::command]
+fn copy(path: String) -> Result<(), String> {
+    let uri = format!("file://{}", path);
+    let wayland = std::env::var("XDG_SESSION_TYPE").unwrap_or_default() == "wayland";
+    if wayland {
+        let mut child = Command::new("wl-copy")
+            .arg("--type")
+            .arg("text/uri-list")
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        
+        use std::io::Write;
+        let mut stdin = child.stdin.take().ok_or("Failed to open stdin")?;
+        stdin.write_all(uri.as_bytes()).map_err(|e| e.to_string())?;
+    } else {
+        Command::new("sh")
+            .arg("-c")
+            .arg(format!("echo -n '{}' | xclip -selection clipboard -t text/uri-list", uri))
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
@@ -116,11 +142,15 @@ pub fn run() {
             let open_file_i = MenuItem::with_id(app, "open-file", "Open file", true, Some("CmdOrCtrl+Enter"))?;
             let new_window_i = MenuItem::with_id(app, "new-window", "New window", true, Some("CmdOrCtrl+N"))?;
             let file_menu = Submenu::with_items(app, "File", true, &[&create_dir_i, &create_file_i, &open_file_i, &view_file_i, &new_window_i])?;
+            
+            let copy_file_i = MenuItem::with_id(app, "copy", "Copy", true, Some("CmdOrCtrl+C"))?;
             let delete_file_i = MenuItem::with_id(app, "delete", "Delete", true, Some("Delete"))?;
-            let edit_menu = Submenu::with_items(app, "Edit", true, &[&delete_file_i])?;
+            let edit_menu = Submenu::with_items(app, "Edit", true, &[&copy_file_i, &delete_file_i,])?;
+
             let refresh_i = MenuItem::with_id(app, "refresh", "Refresh", true, Some("CmdOrCtrl+R"))?;
             let show_hidden_i = MenuItem::with_id(app, "toggle-hidden", "Show/hide hidden files", true, Some("CmdOrCtrl+H"))?;
             let view_menu = Submenu::with_items(app, "View", true, &[&refresh_i, &show_hidden_i])?;
+
             let go_back_i = MenuItem::with_id(app, "go-back", "Go back", true, Some("CmdOrCtrl+Left"))?;
             let go_forward_i = MenuItem::with_id(app, "go-forward", "Go forward", true, Some("CmdOrCtrl+Right"))?;
             let go_up_i = MenuItem::with_id(app, "go-up", "Go up", true, Some("CmdOrCtrl+Up"))?;
@@ -161,6 +191,9 @@ pub fn run() {
                     .build();
                 }
             }
+            if event.id() == "copy" {
+                let _ = app_handle.emit("copy", "");
+            }
             if event.id() == "delete" {
                 let _ = app_handle.emit("delete", "");
             }
@@ -180,7 +213,7 @@ pub fn run() {
                 let _ = app_handle.emit("go-up", "");
             }
         })
-        .invoke_handler(tauri::generate_handler![get_files, get_parent_path, get_home_dir, open_file, create_dir, create_file, delete, view_file, read_text_file]) 
+        .invoke_handler(tauri::generate_handler![get_files, get_parent_path, get_home_dir, open_file, create_dir, create_file, delete, view_file, read_text_file, copy]) 
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
