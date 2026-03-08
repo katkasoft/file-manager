@@ -5,6 +5,8 @@ const pathInput = document.getElementById('path');
 let globalPath = "";
 let selectedPath = "";
 let showHidden = false;
+let history = [];
+let currentHistoryIndex = -1;
 
 async function openFile(path) {
     try {
@@ -28,7 +30,12 @@ document.getElementById('up').onclick = async () => {
     await goUp();
 }
 
-async function loadFiles(path) {
+async function loadFiles(path, addToHistory = true) {
+    if (addToHistory) {
+        history = history.slice(0, currentHistoryIndex + 1);
+        history.push(path);
+        currentHistoryIndex++;
+    }
     globalPath = path;
     pathInput.value = path;
     try {
@@ -66,6 +73,28 @@ pathInput.addEventListener('keydown', (event) => {
     loadFiles(pathInput.value);
   }
 });
+
+function goBack() {
+    if (currentHistoryIndex > 0) {
+        currentHistoryIndex--;
+        loadFiles(history[currentHistoryIndex], false);
+    }
+}
+
+function goForward() {
+    if (currentHistoryIndex < history.length - 1) {
+        currentHistoryIndex++;
+        loadFiles(history[currentHistoryIndex], false);
+    }
+}
+
+document.getElementById('back').onclick = () => {
+    goBack();
+}
+
+document.getElementById('forward').onclick = () => {
+    goForward();
+}
 
 async function init() {
 const urlParams = new URLSearchParams(window.location.search);
@@ -132,6 +161,12 @@ const urlParams = new URLSearchParams(window.location.search);
   await listen('toggle-hidden', async (event) => {
     showHidden = !showHidden;
     loadFiles(globalPath);
+  });
+  await listen('go-back', async (event) => {
+    goBack();
+  });
+  await listen('go-forward', async (event) => {
+    goForward();
   });
   await listen('go-up', async (event) => {
     await goUp();
