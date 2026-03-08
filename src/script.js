@@ -5,6 +5,14 @@ const pathInput = document.getElementById('path');
 let globalPath = "";
 let selectedPath = "";
 
+async function openFile(path) {
+    try {
+        await invoke('open_file', { path: path });
+    } catch (e) {
+        alert("Error opening file: " + e);
+    }
+}
+
 document.getElementById('back').onclick = async () => {
     if (globalPath === "/") return;
     try {
@@ -38,11 +46,7 @@ async function loadFiles(path) {
                 if (file.entry_type == "dir") {
                     loadFiles(file.full_path);
                 } else {
-                    try {
-                        await invoke('open_file', { path: file.full_path });
-                    } catch (e) {
-                        alert("Error opening file: " + e);
-                    }
+                    await openFile(file.full_path);
                 }
             };
             fileList.appendChild(li);
@@ -95,6 +99,10 @@ const urlParams = new URLSearchParams(window.location.search);
     } catch (e) {
         alert("Error creating file: " + e);
     }
+  });
+  await listen('open-file', async (event) => {
+    if (!selectedPath) return;
+    await openFile(selectedPath);
   });
   await listen('view-file', async (event) => {
     if (!selectedPath) return;

@@ -113,8 +113,9 @@ pub fn run() {
             let create_dir_i = MenuItem::with_id(app, "create-dir", "Create directory", true, Some("CmdOrCtrl+D"))?;
             let create_file_i = MenuItem::with_id(app, "create-file", "Create file", true, Some("CmdOrCtrl+F"))?;
             let view_file_i = MenuItem::with_id(app, "view-file", "View file", true, Some("CmdOrCtrl+O"))?;
+            let open_file_i = MenuItem::with_id(app, "open-file", "Open file", true, Some("Enter"))?;
             let new_window_i = MenuItem::with_id(app, "new-window", "New window", true, Some("CmdOrCtrl+N"))?;
-            let file_menu = Submenu::with_items(app, "File", true, &[&create_dir_i, &create_file_i, &view_file_i, &new_window_i])?;
+            let file_menu = Submenu::with_items(app, "File", true, &[&create_dir_i, &create_file_i, &open_file_i, &view_file_i, &new_window_i])?;
             let delete_file_i = MenuItem::with_id(app, "delete", "Delete", true, Some("Delete"))?;
             let edit_menu = Submenu::with_items(app, "Edit", true, &[&delete_file_i])?;
             let menu = Menu::with_items(app, &[&file_menu, &edit_menu])?;
@@ -127,6 +128,9 @@ pub fn run() {
             }
             if event.id() == "create-file" {
                 let _ = app_handle.emit("create-file", "");
+            }
+            if event.id() == "open-file" {
+                let _ = app_handle.emit("open-file", "");
             }
             if event.id() == "view-file" {
                 let _ = app_handle.emit("view-file", "");
