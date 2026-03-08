@@ -74,6 +74,13 @@ pathInput.addEventListener('keydown', (event) => {
   }
 });
 
+window.addEventListener('keydown', async (event) => {
+    if (event.key === 'Enter' && document.activeElement !== pathInput) {
+        if (selectedPath) await openFile(selectedPath);
+    }
+});
+
+
 function goBack() {
     if (currentHistoryIndex > 0) {
         currentHistoryIndex--;
