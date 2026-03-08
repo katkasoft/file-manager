@@ -109,7 +109,48 @@ fn get_files(path: String) -> Result<Vec<FileInfo>, String> {
 }
 
 #[tauri::command]
+fn paste(dest_dir: String) -> Result<(), String> {
+    let wayland = std::env::var("XDG_SESSION_TYPE").unwrap_or_default() == "wayland";
+    let output = if wayland {
+        Command::new("wl-paste").arg("--type").arg("text/uri-list").output()
+    } else {
+        Command::new("xclip").arg("-selection").arg("clipboard").arg("-o").arg("-t").arg("text/uri-list").output()
+    }.map_err(|e| e.to_string())?;
+    let uri = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if uri.is_empty() { return Err("Clipboard is empty".into()); }
+    let source_path_str = uri.strip_prefix("file://").unwrap_or(&uri);
+    let source_path = Path::new(source_path_str);
+    let file_name = source_path.file_name().ok_or("Invalid source file name")?;
+    let target_path = Path::new(&dest_dir).join(file_name);
+    if source_path.is_dir() {
+        copy_dir_recursive(source_path, &target_path)?;
+    } else {
+        fs::copy(source_path, target_path).map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
+fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {
+    fs::create_dir_all(dst).map_err(|e| e.to_string())?;
+    for entry in fs::read_dir(src).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let file_type = entry.file_type().map_err(|e| e.to_string())?;
+        if file_type.is_dir() {
+            copy_dir_recursive(&entry.path(), &dst.join(entry.file_name()))?;
+        } else {
+            fs::copy(entry.path(), dst.join(entry.file_name())).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
 fn copy(path: String) -> Result<(), String> {
+    let p = Path::new(&path);
+    if !p.exists() {
+        return Err("Path does not exist".to_string());
+    }
     let uri = format!("file://{}", path);
     let wayland = std::env::var("XDG_SESSION_TYPE").unwrap_or_default() == "wayland";
     if wayland {
@@ -144,8 +185,9 @@ pub fn run() {
             let file_menu = Submenu::with_items(app, "File", true, &[&create_dir_i, &create_file_i, &open_file_i, &view_file_i, &new_window_i])?;
             
             let copy_file_i = MenuItem::with_id(app, "copy", "Copy", true, Some("CmdOrCtrl+C"))?;
+            let paste_file_i = MenuItem::with_id(app, "paste", "Paste", true, Some("CmdOrCtrl+V"))?;
             let delete_file_i = MenuItem::with_id(app, "delete", "Delete", true, Some("Delete"))?;
-            let edit_menu = Submenu::with_items(app, "Edit", true, &[&copy_file_i, &delete_file_i,])?;
+            let edit_menu = Submenu::with_items(app, "Edit", true, &[&copy_file_i, &paste_file_i, &delete_file_i,])?;
 
             let refresh_i = MenuItem::with_id(app, "refresh", "Refresh", true, Some("CmdOrCtrl+R"))?;
             let show_hidden_i = MenuItem::with_id(app, "toggle-hidden", "Show/hide hidden files", true, Some("CmdOrCtrl+H"))?;
@@ -194,6 +236,9 @@ pub fn run() {
             if event.id() == "copy" {
                 let _ = app_handle.emit("copy", "");
             }
+            if event.id() == "paste" {
+                let _ = app_handle.emit("paste", "");
+            }
             if event.id() == "delete" {
                 let _ = app_handle.emit("delete", "");
             }
@@ -213,7 +258,7 @@ pub fn run() {
                 let _ = app_handle.emit("go-up", "");
             }
         })
-        .invoke_handler(tauri::generate_handler![get_files, get_parent_path, get_home_dir, open_file, create_dir, create_file, delete, view_file, read_text_file, copy]) 
+        .invoke_handler(tauri::generate_handler![get_files, get_parent_path, get_home_dir, open_file, create_dir, create_file, delete, view_file, read_text_file, copy, paste]) 
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

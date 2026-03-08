@@ -161,6 +161,14 @@ const urlParams = new URLSearchParams(window.location.search);
         alert("Error copying file path to clipboard: " + e);
     }
   });
+  await listen('paste', async (event) => {
+    try {
+        await invoke('paste', { destDir: globalPath }); 
+        loadFiles(globalPath);
+    } catch (e) {
+        alert("Error pasting file: " + e);
+    }
+  });    
   await listen('delete', async (event) => {
     if (!selectedPath) return;
     try {
