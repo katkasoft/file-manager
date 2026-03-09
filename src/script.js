@@ -48,6 +48,9 @@ async function loadFiles(path, addToHistory = true) {
     try {
         const files = await invoke('get_files', { path: path });
         fileList.innerHTML = '';
+        if (files.length === 0) {
+            fileList.innerHTML = '<p id="empty">Folder is empty</p>';
+        }
         for (const file of files) {
             if (file.display_path.startsWith('.') && !showHidden) continue;
             const li = document.createElement('li');
