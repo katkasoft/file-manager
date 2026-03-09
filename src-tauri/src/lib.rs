@@ -107,6 +107,7 @@ fn get_files(path: String) -> Result<Vec<FileInfo>, String> {
             entry_type: if p.is_dir() { "dir" } else { "file" }.into(),
         });
     }
+    files.sort_by_key(|f| (f.entry_type != "dir", f.display_path.to_lowercase()));
     Ok(files)
 }
 
