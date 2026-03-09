@@ -124,7 +124,9 @@ const urlParams = new URLSearchParams(window.location.search);
     loadFiles("/");
   }
   await listen('create-dir', async (event) => {
-    let dirPath = globalPath + "/" + prompt("Enter directory name:");
+    let inputed = prompt("Enter directory name:");
+    if (inputed === null || inputed.trim() === "") return;
+    let dirPath = globalPath + "/" + inputed;
     try {
         await invoke('create_dir', { path: dirPath });
         loadFiles(globalPath);
@@ -133,7 +135,9 @@ const urlParams = new URLSearchParams(window.location.search);
     }
   });
   await listen('create-file', async (event) => {
-    let filePath = globalPath + "/" + prompt("Enter file name:");
+    let fileName = prompt("Enter file name:");
+    if (fileName === null || fileName.trim() === "") return;
+    let filePath = globalPath + "/" + fileName;
     try {
         await invoke('create_file', { path: filePath });
         loadFiles(globalPath);

@@ -27,8 +27,7 @@ header {
     border-radius: 4px;
     transition: background 0.2s;
 }
-
-#back:hover {
+.navigation-button:hover {
     background-color: #444;
 }
 
