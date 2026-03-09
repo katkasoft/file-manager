@@ -30,6 +30,13 @@ document.getElementById('up').onclick = async () => {
     await goUp();
 }
 
+function selectElement(li, path) {
+    document.querySelectorAll('li').forEach(el => el.classList.remove('selected'));
+    li.classList.add('selected');
+    selectedPath = path;
+    li.scrollIntoView({ block: 'nearest' });
+}
+
 async function loadFiles(path, addToHistory = true) {
     if (addToHistory) {
         history = history.slice(0, currentHistoryIndex + 1);
@@ -44,15 +51,15 @@ async function loadFiles(path, addToHistory = true) {
         for (const file of files) {
             if (file.display_path.startsWith('.') && !showHidden) continue;
             const li = document.createElement('li');
+            li.dataset.path = file.full_path;
+            li.dataset.type = file.entry_type;
             if (file.entry_type == "dir") {
                 li.textContent = "📁 " + file.display_path;
             } else {
                 li.textContent = "📄 " + file.display_path;
             }
             li.onclick = () => {
-                document.querySelectorAll('li').forEach(el => el.classList.remove('selected'));
-                li.classList.add('selected');
-                selectedPath = file.full_path; 
+                selectElement(li, file.full_path);
             };
             li.ondblclick = async () => {
                 if (file.entry_type == "dir") {
@@ -75,8 +82,34 @@ pathInput.addEventListener('keydown', (event) => {
 });
 
 window.addEventListener('keydown', async (event) => {
-    if (event.key === 'Enter' && document.activeElement !== pathInput) {
-        if (selectedPath) await openFile(selectedPath);
+    if (document.activeElement === pathInput) return;
+    const items = Array.from(fileList.querySelectorAll('li'));
+    const selectedIndex = items.findIndex(li => li.classList.contains('selected'));
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        const nextIndex = selectedIndex < items.length - 1 ? selectedIndex + 1 : 0;
+        const nextItem = items[nextIndex];
+        if (nextItem) {
+            selectElement(nextItem, nextItem.dataset.path);
+        }
+    } 
+    else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        const prevIndex = selectedIndex > 0 ? selectedIndex - 1 : items.length - 1;
+        const prevItem = items[prevIndex];
+        if (prevItem) {
+            selectElement(prevItem, prevItem.dataset.path);
+        }
+    } 
+    else if (event.key === 'Enter') {
+        if (selectedPath) {
+            const selectedLi = items[selectedIndex];
+            if (selectedLi && selectedLi.dataset.type === 'dir') {
+                loadFiles(selectedPath);
+            } else {
+                await openFile(selectedPath);
+            }
+        }
     }
 });
 
