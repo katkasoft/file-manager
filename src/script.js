@@ -172,7 +172,15 @@ const urlParams = new URLSearchParams(window.location.search);
     } catch (e) {
         alert("Error pasting file: " + e);
     }
-  });    
+  });
+  await listen('cut', async (event) => {
+    if (!selectedPath) return;
+    try {
+        await invoke('cut', { path: selectedPath });
+    } catch (e) {
+        alert("Error cutting file: " + e);
+    }
+  }); 
   await listen('delete', async (event) => {
     if (!selectedPath) return;
     try {

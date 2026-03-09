@@ -13,6 +13,8 @@ struct FileInfo {
     entry_type: String,
 }
 
+static IS_CUT: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 #[tauri::command]
 fn open_file(path: String) -> Result<(), String> {
     #[cfg(target_os = "linux")]
@@ -127,7 +129,10 @@ fn paste(dest_dir: String) -> Result<(), String> {
     } else {
         fs::copy(source_path, target_path).map_err(|e| e.to_string())?;
     }
-
+    if IS_CUT.load(std::sync::atomic::Ordering::SeqCst) {
+        delete(source_path_str.to_string())?;
+        IS_CUT.store(false, std::sync::atomic::Ordering::SeqCst);
+    }
     Ok(())
 }
 
@@ -174,6 +179,13 @@ fn copy(path: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn cut(path: String) -> Result<(), String> {
+    IS_CUT.store(true, std::sync::atomic::Ordering::SeqCst);
+    let copied = copy(path);
+    Ok(copied?)
+}
+
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
@@ -186,8 +198,9 @@ pub fn run() {
             
             let copy_file_i = MenuItem::with_id(app, "copy", "Copy", true, Some("CmdOrCtrl+C"))?;
             let paste_file_i = MenuItem::with_id(app, "paste", "Paste", true, Some("CmdOrCtrl+V"))?;
+            let cut_file_i = MenuItem::with_id(app, "cut", "Cut", true, Some("CmdOrCtrl+X"))?;
             let delete_file_i = MenuItem::with_id(app, "delete", "Delete", true, Some("Delete"))?;
-            let edit_menu = Submenu::with_items(app, "Edit", true, &[&copy_file_i, &paste_file_i, &delete_file_i,])?;
+            let edit_menu = Submenu::with_items(app, "Edit", true, &[&copy_file_i, &paste_file_i, &cut_file_i, &delete_file_i,])?;
 
             let refresh_i = MenuItem::with_id(app, "refresh", "Refresh", true, Some("CmdOrCtrl+R"))?;
             let show_hidden_i = MenuItem::with_id(app, "toggle-hidden", "Show/hide hidden files", true, Some("CmdOrCtrl+H"))?;
@@ -239,6 +252,9 @@ pub fn run() {
             if event.id() == "paste" {
                 let _ = app_handle.emit("paste", "");
             }
+            if event.id() == "cut" {
+                let _ = app_handle.emit("cut", "");
+            }
             if event.id() == "delete" {
                 let _ = app_handle.emit("delete", "");
             }
@@ -258,7 +274,7 @@ pub fn run() {
                 let _ = app_handle.emit("go-up", "");
             }
         })
-        .invoke_handler(tauri::generate_handler![get_files, get_parent_path, get_home_dir, open_file, create_dir, create_file, delete, view_file, read_text_file, copy, paste]) 
+        .invoke_handler(tauri::generate_handler![get_files, get_parent_path, get_home_dir, open_file, create_dir, create_file, delete, view_file, read_text_file, copy, paste, cut]) 
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
