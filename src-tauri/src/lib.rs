@@ -152,6 +152,14 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn rename(path: String, new_name: String) -> Result<(), String> {
+    let old_path = Path::new(&path);
+    let new_path = Path::new(&new_name);
+    fs::rename(old_path, new_path)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn copy(path: String) -> Result<(), String> {
     let p = Path::new(&path);
     if !p.exists() {
@@ -200,8 +208,9 @@ pub fn run() {
             let copy_file_i = MenuItem::with_id(app, "copy", "Copy", true, Some("CmdOrCtrl+C"))?;
             let paste_file_i = MenuItem::with_id(app, "paste", "Paste", true, Some("CmdOrCtrl+V"))?;
             let cut_file_i = MenuItem::with_id(app, "cut", "Cut", true, Some("CmdOrCtrl+X"))?;
+            let rename_file_i = MenuItem::with_id(app, "rename", "Rename", true, Some("F2"))?;
             let delete_file_i = MenuItem::with_id(app, "delete", "Delete", true, Some("Delete"))?;
-            let edit_menu = Submenu::with_items(app, "Edit", true, &[&copy_file_i, &paste_file_i, &cut_file_i, &delete_file_i,])?;
+            let edit_menu = Submenu::with_items(app, "Edit", true, &[&copy_file_i, &paste_file_i, &cut_file_i, &rename_file_i, &delete_file_i,])?;
 
             let refresh_i = MenuItem::with_id(app, "refresh", "Refresh", true, Some("CmdOrCtrl+R"))?;
             let show_hidden_i = MenuItem::with_id(app, "toggle-hidden", "Show/hide hidden files", true, Some("CmdOrCtrl+H"))?;
@@ -256,6 +265,9 @@ pub fn run() {
             if event.id() == "cut" {
                 let _ = app_handle.emit("cut", "");
             }
+            if event.id() == "rename" {
+                let _ = app_handle.emit("rename", "");
+            }
             if event.id() == "delete" {
                 let _ = app_handle.emit("delete", "");
             }
@@ -275,7 +287,7 @@ pub fn run() {
                 let _ = app_handle.emit("go-up", "");
             }
         })
-        .invoke_handler(tauri::generate_handler![get_files, get_parent_path, get_home_dir, open_file, create_dir, create_file, delete, view_file, read_text_file, copy, paste, cut]) 
+        .invoke_handler(tauri::generate_handler![get_files, get_parent_path, get_home_dir, open_file, create_dir, create_file, delete, view_file, read_text_file, copy, paste, cut, rename]) 
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -214,6 +214,18 @@ const urlParams = new URLSearchParams(window.location.search);
         alert("Error cutting file: " + e);
     }
   }); 
+  await listen('rename', async (event) => {
+    if (!selectedPath) return;
+    let newName = prompt("Введите новое имя:");
+    if (!newName || !newName.trim()) return;
+    const newFullPath = globalPath.endsWith('/') ? globalPath + newName : globalPath + '/' + newName;
+    try {
+        await invoke('rename', { path: selectedPath, newName: newFullPath }); 
+        await loadFiles(globalPath);
+    } catch (e) {
+        alert("Ошибка: " + e);
+    }
+});
   await listen('delete', async (event) => {
     if (!selectedPath) return;
     try {
